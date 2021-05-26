@@ -76,7 +76,7 @@ function run() {
         if (destFolder.getFoldersByName(subfolderName).hasNext()) {
           folderFinal = destFolder.getFoldersByName(subfolderName).next()
         }
-        else if (settingsJson.saveAsSeparateEmlFiles || settingsJson.saveAsSeparateAttachments){
+        else if (settingsJson.saveAsSeparateEmlFiles || settingsJson.saveAsSeparateAttachments) {
           folderFinal = destFolder.createFolder(subfolderName)
         }
 
@@ -117,9 +117,9 @@ function run() {
             size,
             attachmentsCount,
             '=hyperlink("' + threads[i].getPermalink() + '", "View")',
-            folderFinal!=null ? '=hyperlink("https://drive.google.com/drive/u/0/folders/' + folderFinal.getId() + '", "View Folder")' : '-',
+            folderFinal != null ? '=hyperlink("https://drive.google.com/drive/u/0/folders/' + folderFinal.getId() + '", "View Folder")' : '-',
             //'=hyperlink("https://drive.google.com/uc?export=view&id=' + messageBodyFile.getId() + '", "View message body PDF")'
-            messageBodyFile!=null ? '=hyperlink("https://drive.google.com/file/d/' + messageBodyFile.getId() + '", "View message body PDF")' : '-'
+            messageBodyFile != null ? '=hyperlink("https://drive.google.com/file/d/' + messageBodyFile.getId() + '", "View message body PDF")' : '-'
           ]);
         }
 
@@ -155,13 +155,18 @@ function onOpen() {
 }
 
 function duplicateMessageWithoutAttachments(_threadId, _emailId) {
-  // Taken from https://stackoverflow.com/questions/46434390/remove-an-attachment-of-a-gmail-email-with-google-apps-script
+  // Takes from https://stackoverflow.com/questions/46434390/remove-an-attachment-of-a-gmail-email-with-google-apps-script
   // Get the `raw` email
   var email = GmailApp.getMessageById(_emailId).getRawContent();
 
   // Find the end boundary of html or plain-text email
   var re_html = /(-*\w*)(\r)*(\n)*(?=Content-Type: text\/html;)/.exec(email);
   var re = re_html || /(-*\w*)(\r)*(\n)*(?=Content-Type: text\/plain;)/.exec(email);
+
+  if (re == null) {
+    var re_html = /(-*\w*)(\r)*(\n)*(?=Content-type: text\/html;)/.exec(email);
+    var re = re_html || /(-*\w*)(\r)*(\n)*(?=Content-type: text\/plain;)/.exec(email);
+  }
 
   // Find the index of the end of message boundary
   var start = re[1].length + re.index;
