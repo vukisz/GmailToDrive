@@ -2,8 +2,6 @@ SETTINGS = {
   sheetNameSettings: "SettingsAndRunningValues"
 };
 
-// GLOBALS
-var timeUpMs = 4 * 60 * 1000 //4 minutes (1 minute grace period for really big threads)
 
 function run() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -15,7 +13,7 @@ function run() {
 
   var query = '';
   var now = new Date();
-  var timeUp = false
+
 
   if (settingsJson.donotExecute) {
     alertWithTryCatch('donotExecute is set to true')
@@ -51,15 +49,6 @@ function run() {
 
 
   for (var i in threads) {
-    //if (i > 0) break; // TODO Only when testing
-
-
-    if (isTimeUp(now)) {
-      //time up handling inspiration from https://www.reddit.com/r/GMail/comments/l7yrgz/sort_messages_by_size/
-      timeUp = true;
-      break;
-    }
-
     var mesgs = threads[i].getMessages();
     for (var j in mesgs) {
 
@@ -140,7 +129,6 @@ function run() {
       }
     }
   }
-  resumeScanning(timeUp);
 
 }
 
@@ -155,7 +143,7 @@ function onOpen() {
 }
 
 function duplicateMessageWithoutAttachments(_threadId, _emailId) {
-  // Takes from https://stackoverflow.com/questions/46434390/remove-an-attachment-of-a-gmail-email-with-google-apps-script
+  // Taken from https://stackoverflow.com/questions/46434390/remove-an-attachment-of-a-gmail-email-with-google-apps-script
   // Get the `raw` email
   var email = GmailApp.getMessageById(_emailId).getRawContent();
 
@@ -187,29 +175,6 @@ function duplicateMessageWithoutAttachments(_threadId, _emailId) {
   Logger.log("The inserted email id is: %s", response.id)
 
 
-}
-
-
-function isTimeUp(start) {
-  var now = new Date();
-  return (now.getTime() - start.getTime()) > timeUpMs;
-}
-
-
-function resumeScanning(_timeUp) {
-  if (_timeUp) {
-    try {
-      var ui = SpreadsheetApp.getUi();
-      var response = ui.prompt('Time is up', 'Click OK to resume scanning..', ui.ButtonSet.OK_CANCEL);
-      if (response.getSelectedButton() == ui.Button.OK) {
-        run();
-      }
-    } catch (e) {
-      // Logs an ERROR message.
-      console.warn('SpreadsheetApp.getUi() yielded an error, but was handled: ' + e);
-      console.error("timeout stop")
-    }
-  }
 }
 
 
