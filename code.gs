@@ -52,6 +52,10 @@ function run() {
     var mesgs = threads[i].getMessages();
     for (var j in mesgs) {
 
+      if (mesgs[j].isInTrash()) {
+        continue;
+      }
+
       var size = mesgs[j].getRawContent().length
 
       if (size > settingsJson.emailSizeInBytesToArchive) {
@@ -85,13 +89,17 @@ function run() {
           //Inspiration from https://stackoverflow.com/questions/60551975/copying-gmail-attachments-to-google-drive-using-apps-script/60552276#60552276
           var attA = mesgs[j].getAttachments();
 
+          if (!settingsJson.saveAsSeparateEmlFiles && attA.length == 0) {
 
+            continue;
+          }
 
-          messageBodyFile = folderFinal.createFile(dateOfCurMessage + '_!MessageBody.pdf', mesgs[j].getBody(), MimeType.PDF)
+          messageBodyFile = folderFinal.createFile(dateOfCurMessage + '_!MessageBody.html', mesgs[j].getBody(), 'text/html')
           attA.forEach(function (a) {
             attachmentsCount++
             folderFinal.createFile(a.copyBlob()).setName(dateOfCurMessage + '_' + a.getName());
           });
+
 
         }
 
@@ -106,10 +114,14 @@ function run() {
             size,
             attachmentsCount,
             '=hyperlink("' + threads[i].getPermalink() + '", "View")',
-            folderFinal != null ? '=hyperlink("https://drive.google.com/drive/u/0/folders/' + folderFinal.getId() + '", "View Folder")' : '-',
-            //'=hyperlink("https://drive.google.com/uc?export=view&id=' + messageBodyFile.getId() + '", "View message body PDF")'
-            messageBodyFile != null ? '=hyperlink("https://drive.google.com/file/d/' + messageBodyFile.getId() + '", "View message body PDF")' : '-'
+            //folderFinal != null ? '=hyperlink("https://drive.google.com/drive/u/0/folders/' + folderFinal.getId() + '", "View Folder")' : '-',
+            //messageBodyFile != null ? '=hyperlink("https://drive.google.com/file/d/' + messageBodyFile.getId() + '", "View message body HTML")' : '-'
+            folderFinal != null ? folderFinal.getId() : '',
+            messageBodyFile != null ? messageBodyFile.getId() : ''
           ]);
+          //Copy excel formulas from above
+          sheet.getRange(sheet.getLastRow(), sheet.getLastColumn() - 1).setFormulaR1C1(sheet.getRange(sheet.getLastRow() - 1, sheet.getLastColumn() - 1).getFormulaR1C1())
+          sheet.getRange(sheet.getLastRow(), sheet.getLastColumn() - 2).setFormulaR1C1(sheet.getRange(sheet.getLastRow() - 1, sheet.getLastColumn() - 2).getFormulaR1C1())
         }
 
 
@@ -124,9 +136,10 @@ function run() {
         }
 
         threads[i].addLabel(GmailApp.getUserLabelByName(settingsJson.assignLabelForArchived))
-        threads[i].removeLabel(GmailApp.getUserLabelByName(settingsJson.labelNameToDoSearchIn))// Important! as if not removed script resume would start again with same mesages
+        
 
       }
+      threads[i].removeLabel(GmailApp.getUserLabelByName(settingsJson.labelNameToDoSearchIn))// Important! as if not removed script resume would start again with same mesages
     }
   }
 
@@ -137,6 +150,7 @@ function onOpen() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var menu = [
     { name: "Run GmailToDrive", functionName: "run" }
+    , { name: "Delete duplicates in drive folder", functionName: "deleteDuplicatesInDriveFolder" }
   ];
   ss.addMenu("➫ GmailToDrive", menu);
   ss.toast("Click the Gmail Menu to continue..");
@@ -150,8 +164,14 @@ function duplicateMessageWithoutAttachments(_threadId, _emailId) {
   // Find the end boundary of html or plain-text email
   var re_html = /(-*\w*)(\r)*(\n)*(?=Content-Type: text\/html;)/.exec(email);
   var re = re_html || /(-*\w*)(\r)*(\n)*(?=Content-Type: text\/plain;)/.exec(email);
+  
+  //TODO: rework first regexp approach to handle other Content-type templates. 
+  if (re == null) { // hangle no ';' symbol at end
+    var re_html = /(-*\w*)(\r)*(\n)*(?=Content-Type: text\/html)/.exec(email);
+    var re = re_html || /(-*\w*)(\r)*(\n)*(?=Content-Type: text\/plain)/.exec(email);
+  }
 
-  if (re == null) {
+  if (re == null) { // Handle when word type is lower case in Content-type 
     var re_html = /(-*\w*)(\r)*(\n)*(?=Content-type: text\/html;)/.exec(email);
     var re = re_html || /(-*\w*)(\r)*(\n)*(?=Content-type: text\/plain;)/.exec(email);
   }
